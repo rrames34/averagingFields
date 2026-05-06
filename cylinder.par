@@ -1,0 +1,27 @@
+[GENERAL]
+
+#startFrom = cylinder0.fld time=0.0
+variableDT = yes
+INITIALdt=1.0e-8
+dt = 1.0e-6
+targetcfl = 0.5
+writeinterval = 100
+numsteps = 0
+
+filtering = hpfrt
+filterWeight = 10
+filterCutoffRatio = 0.9 
+
+[VELOCITY]
+#residualTol = 1e-8
+#residualProj = yes
+density = 1.205
+viscosity = 1.8E-5
+
+[PRESSURE]
+#preconditioner = semg_amg
+#residualTol = 1e-6
+#residualProj = yes
+
+[PROBLEMTYPE]
+stressFormulation = yes

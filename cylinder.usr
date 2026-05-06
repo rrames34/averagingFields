@@ -1,0 +1,348 @@
+C This is a round turbulent pipe flow example
+
+#define ZLENGTH  5.0
+
+c
+C-----------------------------------------------------------------------
+C
+C  USER SPECIFIED ROUTINES:
+C
+C     - boundary conditions
+C     - initial conditions
+C     - variable properties
+C     - forcing function for fluid (f)
+C     - forcing function for passive scalar (q)
+C     - general purpose routine for checking errors etc.
+C
+C-----------------------------------------------------------------------
+      subroutine uservp (ix,iy,iz,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userf  (ix,iy,iz,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      FFY = 0.0
+      FFX = 0.0
+      FFZ = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userq  (ix,iy,iz,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      qvol = 0.0
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userchk
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'ADJOINT'
+
+
+      real   dudx   (lx1,ly1,lz1,lelt)
+     >    ,dudy   (lx1,ly1,lz1,lelt)
+     >    ,dudz   (lx1,ly1,lz1,lelt)
+      real   dvdx   (lx1,ly1,lz1,lelt)
+     >    ,dvdy   (lx1,ly1,lz1,lelt)
+     >    ,dvdz   (lx1,ly1,lz1,lelt)
+      real   dwdx   (lx1,ly1,lz1,lelt)
+     >    ,dwdy   (lx1,ly1,lz1,lelt)
+     >    ,dwdz   (lx1,ly1,lz1,lelt)
+      real   s13   (lx1,ly1,lz1,lelt)
+     >    ,s23   (lx1,ly1,lz1,lelt)
+     >    ,s33   (lx1,ly1,lz1,lelt)
+      parameter (nxyz=lx1*ly1*lz1*lelt)
+      character*80 fnames(9999)
+      real time_prev
+      real time_actual
+      logical stt
+      time_prev=0.0 
+      time_actual=time
+      param(68)=175
+      lastep = 0
+      if (nid.eq.0) then
+        open(unit=199,file='file.list',form='formatted',status='old')
+        read(199,*) nfiles
+        read(199,'(A80)') (fnames(i),i=1,nfiles)
+        close(199)
+      endif
+      
+      call bcast(nfiles,isize)
+      call bcast(fnames,nfiles*80)       
+      istep = 0      
+      do i = 1,nfiles
+       if (nid.eq.0) then
+         write(6,*) 'loading: ', fnames(i)
+       endif
+       !if (istep.gt.55) time=time+0.49817771259100002
+         
+       call load_fld(fnames(i))
+               
+       !if (istep.gt.56) time=time+0.49817771259100002
+
+       if (nid.eq.0) write (6,*) 'istep', istep
+       !if (time.le.time_prev) then
+       !    time=time+time_prev
+       !    stt=.true.
+       !else
+       !    stt=.false.
+       !endif
+       if (nid.eq.0) write (6,*) 'time', time
+       call avg_all
+       !if (stt) time=time-time_prev
+       if (nid.eq.0) then
+         write(6,*) 'data dumped to disk in:','./fldfiles'
+       endif
+       !call gradm1(dudx,dudy,dudz,vx)
+       !call gradm1(dvdx,dvdy,dvdz,vy)
+       !call gradm1(dwdx,dwdy,dwdz,vz)
+       !call add3(s13,dudz,dwdx,nxyz)
+       !call cmult(s13,param(2),nxyz)
+       !call add3(s23,dvdz,dwdy,nxyz)
+       !call cmult(s23,param(2),nxyz)
+       !call copy(s33,dwdx,nxyz)
+       !call cmult(s33,2*param(2),nxyz)
+       !CALL DSSUM (s13,lx1,ly1,lz1)
+       !CALL DSSUM (s23,lx1,ly1,lz1)
+       !CALL DSSUM (s33,lx1,ly1,lz1)
+       
+       !call outpost(s13,s23,
+       !>      s33,pr,pr,'str')
+       istep=istep+1
+      enddo
+      call exitt()
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine userbc (ix,iy,iz,iside,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine useric (ix,iy,iz,ieg)
+
+      include 'SIZE'
+      include 'TOTAL'
+      include 'NEKUSE'
+
+
+      return
+      end
+c-----------------------------------------------------------------------
+      subroutine usrdat
+      include 'SIZE'
+      include 'TOTAL'
+      
+      
+      return
+      end
+c-----------------------------------------------------------------------
+            subroutine usrdat2
+      include 'SIZE'
+      include 'TOTAL'
+
+      n = nx1*ny1*nz1*nelt
+
+      !scale = 0.4 ! Rescale radius from 1.0 to 0.5
+      !call cmult(xm1,scale,n)
+      !call cmult(ym1,scale,n)
+      !call cmult(zm1,0.45,n)
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'MSH') then
+            !write (6,*) 'ifc', ifc
+            if (ifc.eq.1.or.ifc.eq.4) then   !to distinguish from side wall from bottom wall
+               if (zm1(1,1,1,iel).le.0.07) then
+                  cbc(ifc,iel,1) = 'vl '
+               else
+                  cbc(ifc,iel,1) = 'SYM'
+               endif
+            endif
+            
+         endif
+      enddo
+      enddo
+
+      do iel=1,nelt
+      do ifc=1,2*ndim
+         if (cbc(ifc,iel,1) .eq. 'MSH') then
+             cbc(ifc,iel,1) = 'W  '
+             write(6,*) 'MSH to W conversion'
+         endif 
+      enddo
+      enddo
+      call rescale_x(xm1,-0.5d0,0.5d0)
+      call rescale_x(ym1,-0.5d0,0.5d0)
+      call rescale_x(zm1,0.0d0,1.2d0)
+
+
+      return
+      end
+
+c-----------------------------------------------------------------------
+      subroutine usrdat3
+
+      include 'SIZE'
+      include 'TOTAL'
+
+      return
+      end
+      
+
+      subroutine avg_all_custom
+c
+c     This routine computes running averages E(X),E(X^2),E(X*Y)
+c     and outputs to avg*.fld*, rms*.fld*, and rm2*.fld* for all
+c     fields.
+c
+c     E denotes the expected value operator and X,Y two
+c     real valued random variables.
+c
+c     variances and covariances can be computed in a post-processing step:
+c
+c        var(X)   := E(X^X) - E(X)*E(X) 
+c        cov(X,Y) := E(X*Y) - E(X)*E(Y)  
+c
+c     Note: The E-operator is linear, in the sense that the expected
+c           value is given by E(X) = 1/N * sum[ E(X)_i ], where E(X)_i
+c           is the expected value of the sub-ensemble i (i=1...N).
+c
+      include 'SIZE'  
+      include 'TOTAL' 
+      include 'AVG'
+
+      logical ifverbose
+      integer icalld
+      save    icalld
+      data    icalld  /0/
+
+      if (ax1.ne.lx1 .or. ay1.ne.ly1 .or. az1.ne.lz1) then
+         if(nid.eq.0) write(6,*)
+     $     'ABORT: wrong size of ax1,ay1,az1 in avg_all(), check SIZE!'
+         call exitt
+      endif
+      if (ax2.ne.lx2 .or. ay2.ne.ay2 .or. az2.ne.lz2) then
+         if(nid.eq.0) write(6,*)
+     $     'ABORT: wrong size of ax2,ay2,az2 in avg_all(), check SIZE!'
+         call exitt
+      endif
+
+      ntot  = lx1*ly1*lz1*nelv
+      ntott = lx1*ly1*lz1*nelt
+      nto2  = lx2*ly2*lz2*nelv
+
+      ! initialization
+      if (icalld.eq.0) then
+         icalld = icalld + 1
+         atime  = 0.
+         timel  = time
+
+         call rzero(uavg,ntot)
+         call rzero(vavg,ntot)
+         call rzero(wavg,ntot)
+         call rzero(pavg,nto2)
+         do i = 1,ldimt
+            call rzero(tavg(1,1,1,1,i),ntott)
+         enddo
+
+         call rzero(urms,ntot)
+         call rzero(vrms,ntot)
+         call rzero(wrms,ntot)
+         call rzero(prms,nto2)
+         do i = 1,ldimt
+            call rzero(trms(1,1,1,1,i),ntott)
+         enddo
+
+         call rzero(vwms,ntot)
+         call rzero(wums,ntot)
+         call rzero(uvms,ntot)
+      endif
+
+      dtime = time  - timel
+      atime = atime + dtime
+
+      ! dump freq
+      iastep = param(68)
+      if  (iastep.eq.0) iastep=param(15)   ! same as iostep
+      if  (iastep.eq.0) iastep=500
+      write(6,*)  'iastep', iastep
+      ifverbose=.false.
+      if (istep.le.10) ifverbose=.true.
+      if  (mod(istep,iastep).eq.0) ifverbose=.true.
+
+      if (atime.ne.0..and.dtime.ne.0.) then
+         if(nio.eq.0) write(6,*) 'Compute statistics ...'
+         beta  = dtime/atime
+         alpha = 1.-beta
+         ! compute averages E(X)
+         call avg1    (uavg,vx,alpha,beta,ntot ,'um  ',ifverbose)
+         call avg1    (vavg,vy,alpha,beta,ntot ,'vm  ',ifverbose)
+         call avg1    (wavg,vz,alpha,beta,ntot ,'wm  ',ifverbose)
+         call avg1    (pavg,pr,alpha,beta,nto2 ,'prm ',ifverbose)
+         call avg1    (tavg,t ,alpha,beta,ntott,'tm  ',ifverbose)
+         do i = 2,ldimt
+            call avg1 (tavg(1,1,1,1,i),t(1,1,1,1,i),alpha,beta,
+     &                 ntott,'psav',ifverbose)
+         enddo
+
+         ! compute averages E(X^2) 
+         call avg2    (urms,vx,alpha,beta,ntot ,'ums ',ifverbose)
+         call avg2    (vrms,vy,alpha,beta,ntot ,'vms ',ifverbose)
+         call avg2    (wrms,vz,alpha,beta,ntot ,'wms ',ifverbose)
+         call avg2    (prms,pr,alpha,beta,nto2 ,'prms',ifverbose)
+         call avg2    (trms,t ,alpha,beta,ntott,'tms ',ifverbose)
+         do i = 2,ldimt
+            call avg2 (trms(1,1,1,1,i),t(1,1,1,1,i),alpha,beta,
+     &                 ntott,'psms',ifverbose)
+         enddo
+
+         ! compute averages E(X*Y) (for now just for the velocities)
+         call avg3    (uvms,vx,vy,alpha,beta,ntot,'uvm ',ifverbose)
+         call avg3    (vwms,vy,vz,alpha,beta,ntot,'vwm ',ifverbose)
+         call avg3    (wums,vz,vx,alpha,beta,ntot,'wum ',ifverbose)
+      endif
+c
+c-----------------------------------------------------------------------
+      if ( (mod(istep,iastep).eq.0.and.istep.gt.1) .or.lastep.eq.1) then
+
+         time_temp = time
+         time      = atime   ! Output the duration of this avg
+         dtmp      = param(63)
+         param(63) = 1       ! Enforce 64-bit output
+
+         call outpost2(uavg,vavg,wavg,pavg,tavg,ldimt,'avg')
+         call outpost2(urms,vrms,wrms,prms,trms,ldimt,'rms')
+         call outpost (uvms,vwms,wums,prms,trms,      'rm2')
+
+         param(63) = dtmp
+         atime = 0.
+         time  = time_temp  ! Restore clock
+
+      endif
+c
+      timel = time
+c
+      return
+      end
+

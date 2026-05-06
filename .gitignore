@@ -1,0 +1,15 @@
+obj
+nek5000
+makefile
+build.log
+cylinder.nek5000
+.state
+slurm*
+cylinder0.f*
+ptw*
+bin*
+par*
+rms*
+avg*
+rm2*
+SESSION.NAME
