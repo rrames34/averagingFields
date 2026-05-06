@@ -12,6 +12,8 @@ filtering = hpfrt
 filterWeight = 10
 filterCutoffRatio = 0.9 
 
+userParam01 = 70
+
 [VELOCITY]
 #residualTol = 1e-8
 #residualProj = yes

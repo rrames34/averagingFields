@@ -13,3 +13,6 @@ rms*
 avg*
 rm2*
 SESSION.NAME
+*.list
+*.err
+*.out
